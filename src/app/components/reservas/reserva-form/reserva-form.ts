@@ -84,8 +84,9 @@ import { MatDividerModule } from '@angular/material/divider';
                         <div>
                           <strong>{{ cliente.nombre }} {{ cliente.apellido }}</strong>
                           <div style="font-size: 0.9rem; color: #666;">{{ cliente.email }}</div>
+                          <div style="font-size: 0.8rem; color: #999;">{{ cliente.eventosAsistidos || 0 }} eventos asistidos</div>
                         </div>
-                        <div *ngIf="cliente.pasesGratuitos > 0" style="color: #4caf50;">
+                        <div *ngIf="cliente.pasesGratuitos && cliente.pasesGratuitos > 0" class="pases-badge">
                           🎁 {{ cliente.pasesGratuitos }} pases
                         </div>
                       </div>
@@ -95,45 +96,36 @@ import { MatDividerModule } from '@angular/material/divider';
                     </mat-option>
                   </mat-autocomplete>
 
-                  <div *ngIf="clienteSeleccionado" class="cliente-card">
-                    <h3>{{ clienteSeleccionado.nombre }} {{ clienteSeleccionado.apellido }}</h3>
-                    <p>{{ clienteSeleccionado.email }}</p>
-                    <button mat-button (click)="limpiarCliente()">Cambiar cliente</button>
+                  <div *ngIf="clienteSeleccionado" class="cliente-seleccionado-card">
+                    <div class="cliente-info">
+                      <h3>{{ clienteSeleccionado.nombre }} {{ clienteSeleccionado.apellido }}</h3>
+                      <p class="cliente-email">{{ clienteSeleccionado.email }}</p>
+                      <div class="cliente-stats">
+                        <span class="stat-item">
+                          <mat-icon>event_seat</mat-icon>
+                          {{ clienteSeleccionado.eventosAsistidos || 0 }} eventos
+                        </span>
+                        <span class="stat-item" *ngIf="clienteSeleccionado.pasesGratuitos && clienteSeleccionado.pasesGratuitos > 0">
+                          <mat-icon>card_giftcard</mat-icon>
+                          {{ clienteSeleccionado.pasesGratuitos }} pases gratuitos
+                        </span>
+                      </div>
+                    </div>
+                    <button mat-button color="primary" (click)="limpiarCliente()">
+                      <mat-icon>edit</mat-icon>
+                      Cambiar cliente
+                    </button>
                   </div>
 
-                  <div *ngIf="!clienteSeleccionado">
-                    <h3>Crear nuevo cliente</h3>
-                    <div class="form-row">
-                      <mat-form-field appearance="outline">
-                        <mat-label>Nombre</mat-label>
-                        <input matInput formControlName="nombre">
-                      </mat-form-field>
-                      <mat-form-field appearance="outline">
-                        <mat-label>Apellido</mat-label>
-                        <input matInput formControlName="apellido">
-                      </mat-form-field>
-                    </div>
-                    <div class="form-row">
-                      <mat-form-field appearance="outline">
-                        <mat-label>Email</mat-label>
-                        <input matInput type="email" formControlName="email">
-                      </mat-form-field>
-                      <mat-form-field appearance="outline">
-                        <mat-label>DNI</mat-label>
-                        <input matInput formControlName="dni">
-                      </mat-form-field>
-                    </div>
-                    <mat-form-field appearance="outline" class="full-width">
-                      <mat-label>Fecha de Nacimiento</mat-label>
-                      <input matInput type="date" formControlName="fechaNacimiento">
-                    </mat-form-field>
-                    <button mat-raised-button color="primary" (click)="crearCliente()">
-                      Crear Cliente
-                    </button>
+                  <div *ngIf="!clienteSeleccionado" class="instrucciones">
+                    <mat-icon class="instrucciones-icon">search</mat-icon>
+                    <p>Escriba al menos 2 caracteres para buscar un cliente existente.</p>
+                    <p class="nota">Si el cliente no existe, debe ser creado desde la sección de Clientes.</p>
                   </div>
 
                   <div class="step-actions">
                     <button mat-raised-button color="primary" matStepperNext [disabled]="!clienteSeleccionado">
+                      <mat-icon>arrow_forward</mat-icon>
                       Siguiente
                     </button>
                   </div>
@@ -147,19 +139,42 @@ import { MatDividerModule } from '@angular/material/divider';
                 <div class="step-content">
                   <h2>Seleccionar Evento</h2>
 
-                  <div *ngFor="let evento of eventosDisponibles" 
+                  <div *ngIf="eventosDisponibles.length === 0" class="no-eventos">
+                    <mat-icon class="no-eventos-icon">event_busy</mat-icon>
+                    <p>No hay eventos disponibles en este momento</p>
+                  </div>
+
+                  <div *ngFor="let eventoItem of eventosDisponibles" 
                        class="evento-card"
-                       [class.selected]="eventoSeleccionado?.id === evento.id"
-                       (click)="seleccionarEvento(evento)">
-                    <h3>{{ evento.nombre }}</h3>
-                    <p>{{ formatearFecha(evento.fechaHora) }} - {{ formatearHora(evento.fechaHora) }}</p>
-                    <p>Disponibles: {{ evento.capacidadDisponible }}</p>
-                    <p>Desde: {{ '$' + evento.precioDesde }}</p>
+                       [class.selected]="eventoSeleccionado?.id === eventoItem.id"
+                       (click)="seleccionarEvento(eventoItem)">
+                    <div class="evento-header">
+                      <h3>{{ eventoItem.nombre }}</h3>
+                      <span class="evento-tipo">{{ getTipoEventoTexto(eventoItem.tipoEvento) }}</span>
+                    </div>
+                    <div class="evento-details">
+                      <div class="detail-item">
+                        <mat-icon>schedule</mat-icon>
+                        <span>{{ formatearFecha(eventoItem.fechaHora) }} - {{ formatearHora(eventoItem.fechaHora) }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <mat-icon>people</mat-icon>
+                        <span>{{ eventoItem.capacidadDisponible }} disponibles de {{ eventoItem.capacidadTotal }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <mat-icon>attach_money</mat-icon>
+                        <span>Desde \${{ eventoItem.precioDesde }}</span>
+                      </div>
+                    </div>
                   </div>
 
                   <div class="step-actions">
-                    <button mat-button matStepperPrevious>Anterior</button>
+                    <button mat-button matStepperPrevious>
+                      <mat-icon>arrow_back</mat-icon>
+                      Anterior
+                    </button>
                     <button mat-raised-button color="primary" matStepperNext [disabled]="!eventoSeleccionado">
+                      <mat-icon>arrow_forward</mat-icon>
                       Siguiente
                     </button>
                   </div>
@@ -173,26 +188,54 @@ import { MatDividerModule } from '@angular/material/divider';
                 <div class="step-content">
                   <h2>Configurar Reserva</h2>
 
-                  <h3>Tipos de entrada para {{ eventoSeleccionado?.nombre }}:</h3>
-                  <p class="evento-tipo-info">Tipo de evento: {{ getTipoEventoTexto(eventoSeleccionado?.tipoEvento) }}</p>
-                  <div *ngFor="let tipoInfo of tiposEntradaDisponibles" 
-                       class="entrada-option"
-                       [class.selected]="tipoEntradaSeleccionado === tipoInfo.tipo"
-                       (click)="seleccionarTipoEntrada(tipoInfo.tipo, tipoInfo.precio)">
-                    <h4>{{ getNombreTipoEntrada(tipoInfo.tipo) }}</h4>
-                    <p>{{ '$' + tipoInfo.precio }}</p>
-                    <p>{{ tipoInfo.disponible }} disponibles</p>
+                  <div class="evento-info-banner">
+                    <h3>{{ eventoSeleccionado?.nombre }}</h3>
+                    <p>{{ getTipoEventoTexto(eventoSeleccionado?.tipoEvento) }}</p>
                   </div>
 
-                  <div *ngIf="clienteSeleccionado && clienteSeleccionado.pasesGratuitos > 0">
-                    <mat-checkbox formControlName="usarPaseGratuito" (change)="togglePaseGratuito($event.checked)">
-                      Usar pase gratuito ({{ clienteSeleccionado?.pasesGratuitos }} disponibles)
+                  <h3>Seleccione el tipo de entrada:</h3>
+                  
+                  <div *ngIf="tiposEntradaDisponibles.length === 0" class="loading-entradas">
+                    <mat-spinner diameter="30"></mat-spinner>
+                    <p>Cargando tipos de entrada...</p>
+                  </div>
+
+                  <div *ngFor="let entradaItem of tiposEntradaDisponibles" 
+                       class="entrada-option"
+                       [class.selected]="tipoEntradaSeleccionado === entradaItem.tipo"
+                       [class.sin-disponibilidad]="entradaItem.disponible === 0"
+                       (click)="seleccionarTipoEntrada(entradaItem.tipo, entradaItem.precio)">
+                    <div class="entrada-header">
+                      <h4>{{ getNombreTipoEntrada(entradaItem.tipo) }}</h4>
+                      <span class="entrada-precio">\${{ entradaItem.precio }}</span>
+                    </div>
+                    <div class="entrada-disponibilidad">
+                      <mat-icon [style.color]="entradaItem.disponible > 0 ? '#4caf50' : '#f44336'">
+                        {{ entradaItem.disponible > 0 ? 'check_circle' : 'cancel' }}
+                      </mat-icon>
+                      <span>{{ entradaItem.disponible }} disponibles</span>
+                    </div>
+                  </div>
+
+                  <div *ngIf="clienteSeleccionado && clienteSeleccionado.pasesGratuitos && clienteSeleccionado.pasesGratuitos > 0" class="pase-gratuito-section">
+                    <mat-divider></mat-divider>
+                    <mat-checkbox formControlName="usarPaseGratuito" 
+                                  (change)="togglePaseGratuito($event.checked)"
+                                  [disabled]="!tipoEntradaSeleccionado">
+                      <div class="pase-gratuito-option">
+                        <mat-icon>card_giftcard</mat-icon>
+                        <span>Usar pase gratuito ({{ clienteSeleccionado.pasesGratuitos }} disponibles)</span>
+                      </div>
                     </mat-checkbox>
                   </div>
 
                   <div class="step-actions">
-                    <button mat-button matStepperPrevious>Anterior</button>
+                    <button mat-button matStepperPrevious>
+                      <mat-icon>arrow_back</mat-icon>
+                      Anterior
+                    </button>
                     <button mat-raised-button color="primary" matStepperNext [disabled]="!tipoEntradaSeleccionado">
+                      <mat-icon>arrow_forward</mat-icon>
                       Siguiente
                     </button>
                   </div>
@@ -205,25 +248,58 @@ import { MatDividerModule } from '@angular/material/divider';
               <div class="step-content">
                 <h2>Confirmar Reserva</h2>
 
-                <div class="resumen">
-                  <h3>Cliente:</h3>
-                  <p>{{ clienteSeleccionado?.nombre }} {{ clienteSeleccionado?.apellido }}</p>
+                <div class="resumen-final">
+                  <div class="resumen-section">
+                    <h3>
+                      <mat-icon>person</mat-icon>
+                      Cliente
+                    </h3>
+                    <p><strong>{{ clienteSeleccionado?.nombre }} {{ clienteSeleccionado?.apellido }}</strong></p>
+                    <p class="detalle">{{ clienteSeleccionado?.email }}</p>
+                  </div>
+
+                  <mat-divider></mat-divider>
                   
-                  <h3>Evento:</h3>
-                  <p>{{ eventoSeleccionado?.nombre }}</p>
+                  <div class="resumen-section">
+                    <h3>
+                      <mat-icon>event</mat-icon>
+                      Evento
+                    </h3>
+                    <p><strong>{{ eventoSeleccionado?.nombre }}</strong></p>
+                    <p class="detalle">{{ formatearFecha(eventoSeleccionado?.fechaHora || '') }} - {{ formatearHora(eventoSeleccionado?.fechaHora || '') }}</p>
+                  </div>
+
+                  <mat-divider></mat-divider>
                   
-                  <h3>Entrada:</h3>
-                  <p>{{ getNombreTipoEntrada(tipoEntradaSeleccionado) }}</p>
+                  <div class="resumen-section">
+                    <h3>
+                      <mat-icon>local_activity</mat-icon>
+                      Entrada
+                    </h3>
+                    <p><strong>{{ getNombreTipoEntrada(tipoEntradaSeleccionado) }}</strong></p>
+                  </div>
+
+                  <mat-divider></mat-divider>
                   
-                  <h3>Total:</h3>
-                  <p *ngIf="!usandoPaseGratuito">{{ '$' + precioFinal }}</p>
-                  <p *ngIf="usandoPaseGratuito">PASE GRATUITO</p>
+                  <div class="resumen-section total">
+                    <h3>
+                      <mat-icon>{{ usandoPaseGratuito ? 'card_giftcard' : 'attach_money' }}</mat-icon>
+                      Total
+                    </h3>
+                    <p class="precio-final" [class.gratuito]="usandoPaseGratuito">
+                      {{ usandoPaseGratuito ? 'PASE GRATUITO' : '$' + precioFinal }}
+                    </p>
+                  </div>
                 </div>
 
                 <div class="step-actions">
-                  <button mat-button matStepperPrevious>Anterior</button>
+                  <button mat-button matStepperPrevious>
+                    <mat-icon>arrow_back</mat-icon>
+                    Anterior
+                  </button>
                   <button mat-raised-button color="primary" (click)="crearReserva()" [disabled]="creandoReserva">
                     <mat-spinner diameter="20" *ngIf="creandoReserva"></mat-spinner>
+                    <mat-icon *ngIf="!creandoReserva">check</mat-icon>
                     {{ creandoReserva ? 'Creando...' : 'Crear Reserva' }}
                   </button>
                 </div>
@@ -254,6 +330,7 @@ import { MatDividerModule } from '@angular/material/divider';
       align-items: center;
       gap: 8px;
       margin: 0;
+      color: #333;
     }
 
     .stepper-card {
@@ -268,70 +345,7 @@ import { MatDividerModule } from '@angular/material/divider';
       width: 100%;
     }
 
-    .form-row {
-      display: flex;
-      gap: 16px;
-      margin-bottom: 16px;
-    }
-
-    .form-row mat-form-field {
-      flex: 1;
-    }
-
-    .cliente-card {
-      border: 2px solid #e0e0e0;
-      border-radius: 8px;
-      padding: 16px;
-      margin: 16px 0;
-    }
-
-    .evento-card {
-      border: 2px solid #e0e0e0;
-      border-radius: 8px;
-      padding: 16px;
-      margin: 8px 0;
-      cursor: pointer;
-    }
-
-    .evento-card:hover {
-      border-color: #1976d2;
-    }
-
-    .evento-card.selected {
-      border-color: #1976d2;
-      background: #f0f8ff;
-    }
-
-    .entrada-option {
-      border: 2px solid #e0e0e0;
-      border-radius: 8px;
-      padding: 16px;
-      margin: 8px 0;
-      cursor: pointer;
-    }
-
-    .entrada-option:hover {
-      border-color: #1976d2;
-    }
-
-    .entrada-option.selected {
-      border-color: #1976d2;
-      background: #f0f8ff;
-    }
-
-    .resumen {
-      border: 2px solid #e0e0e0;
-      border-radius: 8px;
-      padding: 16px;
-      margin: 16px 0;
-    }
-
-    .step-actions {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 24px;
-    }
-
+    /* Cliente */
     .cliente-option {
       display: flex;
       justify-content: space-between;
@@ -340,15 +354,328 @@ import { MatDividerModule } from '@angular/material/divider';
       padding: 8px 0;
     }
 
-    .evento-tipo-info {
+    .pases-badge {
+      background: #e8f5e8;
+      color: #2e7d32;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .cliente-seleccionado-card {
+      border: 2px solid #4caf50;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 16px 0;
+      background: #f8fff8;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .cliente-info h3 {
+      margin: 0 0 8px 0;
+      color: #2e7d32;
+    }
+
+    .cliente-email {
       color: #666;
-      font-style: italic;
+      margin: 0 0 12px 0;
+    }
+
+    .cliente-stats {
+      display: flex;
+      gap: 16px;
+    }
+
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.9rem;
+      color: #555;
+    }
+
+    .stat-item mat-icon {
+      font-size: 1.2rem;
+      width: 1.2rem;
+      height: 1.2rem;
+    }
+
+    .instrucciones {
+      text-align: center;
+      padding: 40px 20px;
+      color: #666;
+    }
+
+    .instrucciones-icon {
+      font-size: 3rem;
+      width: 3rem;
+      height: 3rem;
+      color: #ccc;
       margin-bottom: 16px;
     }
 
+    .nota {
+      font-size: 0.9rem;
+      color: #999;
+      font-style: italic;
+    }
+
+    /* Eventos */
+    .no-eventos {
+      text-align: center;
+      padding: 40px 20px;
+      color: #666;
+    }
+
+    .no-eventos-icon {
+      font-size: 3rem;
+      width: 3rem;
+      height: 3rem;
+      color: #ccc;
+      margin-bottom: 16px;
+    }
+
+    .evento-card {
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 12px 0;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .evento-card:hover {
+      border-color: #1976d2;
+      box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
+    }
+
+    .evento-card.selected {
+      border-color: #1976d2;
+      background: #f0f8ff;
+    }
+
+    .evento-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .evento-header h3 {
+      margin: 0;
+      color: #333;
+    }
+
+    .evento-tipo {
+      background: #e3f2fd;
+      color: #1976d2;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .evento-details {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .detail-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #666;
+      font-size: 0.9rem;
+    }
+
+    .detail-item mat-icon {
+      font-size: 1.2rem;
+      width: 1.2rem;
+      height: 1.2rem;
+      color: #999;
+    }
+
+    /* Configuración */
+    .evento-info-banner {
+      background: #f5f5f5;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+
+    .evento-info-banner h3 {
+      margin: 0 0 4px 0;
+      color: #333;
+    }
+
+    .evento-info-banner p {
+      margin: 0;
+      color: #666;
+      font-style: italic;
+    }
+
+    .loading-entradas {
+      text-align: center;
+      padding: 40px 20px;
+      color: #666;
+    }
+
+    .entrada-option {
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 12px 0;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .entrada-option:hover:not(.sin-disponibilidad) {
+      border-color: #1976d2;
+      box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
+    }
+
+    .entrada-option.selected {
+      border-color: #1976d2;
+      background: #f0f8ff;
+    }
+
+    .entrada-option.sin-disponibilidad {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: #fafafa;
+    }
+
+    .entrada-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .entrada-header h4 {
+      margin: 0;
+      color: #333;
+    }
+
+    .entrada-precio {
+      color: #4caf50;
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+
+    .entrada-disponibilidad {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #666;
+      font-size: 0.9rem;
+    }
+
+    .pase-gratuito-section {
+      margin-top: 24px;
+      padding-top: 24px;
+    }
+
+    .pase-gratuito-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Resumen */
+    .resumen-final {
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 16px 0;
+      background: #fafafa;
+    }
+
+    .resumen-section {
+      margin: 16px 0;
+    }
+
+    .resumen-section h3 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 8px 0;
+      color: #333;
+      font-size: 1rem;
+    }
+
+    .resumen-section p {
+      margin: 4px 0;
+    }
+
+    .detalle {
+      color: #666;
+      font-size: 0.9rem;
+    }
+
+    .resumen-section.total {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .precio-final {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #4caf50;
+    }
+
+    .precio-final.gratuito {
+      color: #ff9800;
+    }
+
+    .step-actions {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 32px;
+    }
+
+    .step-actions button {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Responsive */
     @media (max-width: 768px) {
-      .form-row {
+      .crear-reserva-container {
+        padding: 16px;
+      }
+
+      .cliente-seleccionado-card {
         flex-direction: column;
+        text-align: center;
+        gap: 16px;
+      }
+
+      .cliente-stats {
+        justify-content: center;
+      }
+
+      .evento-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+
+      .entrada-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+      }
+
+      .step-actions {
+        flex-direction: column;
+        gap: 12px;
       }
     }
   `]
@@ -401,12 +728,7 @@ export class CrearReservaComponent implements OnInit {
 
   initForms(): void {
     this.clienteForm = this.fb.group({
-      busquedaCliente: [''],
-      nombre: [''],
-      apellido: [''],
-      email: [''],
-      dni: [''],
-      fechaNacimiento: ['']
+      busquedaCliente: ['', Validators.required]
     });
 
     this.eventoForm = this.fb.group({
@@ -437,16 +759,7 @@ export class CrearReservaComponent implements OnInit {
         },
         error: (error) => {
           console.error('Error buscando clientes:', error);
-          // Datos de ejemplo para desarrollo
-          this.clientesFiltrados = [
-            { id: 1, nombre: 'Juan', apellido: 'Pérez', email: 'juan@email.com', eventosAsistidos: 3, pasesGratuitos: 1 },
-            { id: 2, nombre: 'María', apellido: 'González', email: 'maria@email.com', eventosAsistidos: 5, pasesGratuitos: 0 },
-            { id: 3, nombre: 'Carlos', apellido: 'López', email: 'carlos@email.com', eventosAsistidos: 8, pasesGratuitos: 2 }
-          ].filter(cliente => 
-            cliente.nombre.toLowerCase().includes(termino.toLowerCase()) ||
-            cliente.apellido.toLowerCase().includes(termino.toLowerCase()) ||
-            cliente.email.toLowerCase().includes(termino.toLowerCase())
-          );
+          this.snackBar.open('Error al buscar clientes', 'Cerrar', { duration: 3000 });
         }
       });
     } else {
@@ -462,35 +775,6 @@ export class CrearReservaComponent implements OnInit {
     });
   }
 
-  crearCliente(): void {
-    const { nombre, apellido, email, dni, fechaNacimiento } = this.clienteForm.value;
-    
-    if (!nombre || !apellido || !email || !dni || !fechaNacimiento) {
-      this.snackBar.open('Complete todos los campos obligatorios', 'Cerrar', { duration: 3000 });
-      return;
-    }
-
-    const nuevoCliente = { nombre, apellido, email, dni, fechaNacimiento };
-
-    this.clienteService.crearCliente(nuevoCliente).subscribe({
-      next: (cliente) => {
-        this.clienteSeleccionado = {
-          id: cliente.id!,
-          nombre: cliente.nombre,
-          apellido: cliente.apellido,
-          email: cliente.email,
-          eventosAsistidos: 0,
-          pasesGratuitos: 0
-        };
-        this.snackBar.open('Cliente creado exitosamente', 'Cerrar', { duration: 3000 });
-      },
-      error: (error) => {
-        console.error('Error creando cliente:', error);
-        this.snackBar.open('Error al crear el cliente', 'Cerrar', { duration: 3000 });
-      }
-    });
-  }
-
   cargarEventosDisponibles(): void {
     this.eventoService.obtenerEventosConDisponibilidad().subscribe({
       next: (eventos) => {
@@ -498,39 +782,7 @@ export class CrearReservaComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error cargando eventos:', error);
-        // Datos de ejemplo para desarrollo con configuraciones reales
-        this.eventosDisponibles = [
-          { 
-            id: 1, 
-            nombre: 'Romeo y Julieta', 
-            fechaHora: '2024-07-15T20:00:00', 
-            capacidadDisponible: 45, 
-            capacidadTotal: 150, 
-            estaVigente: true, 
-            precioDesde: 1800,
-            tipoEvento: 'OBRA_TEATRO' as any
-          },
-          { 
-            id: 2, 
-            nombre: 'Concierto Rock Nacional', 
-            fechaHora: '2024-07-20T21:30:00', 
-            capacidadDisponible: 120, 
-            capacidadTotal: 500, 
-            estaVigente: true, 
-            precioDesde: 2800,
-            tipoEvento: 'RECITAL' as any
-          },
-          { 
-            id: 3, 
-            nombre: 'Conferencia de Tecnología', 
-            fechaHora: '2024-07-25T19:00:00', 
-            capacidadDisponible: 80, 
-            capacidadTotal: 150, 
-            estaVigente: true, 
-            precioDesde: 800,
-            tipoEvento: 'CHARLA_CONFERENCIA' as any
-          }
-        ];
+        this.snackBar.open('Error al cargar eventos disponibles', 'Cerrar', { duration: 3000 });
       }
     });
   }
@@ -551,8 +803,7 @@ export class CrearReservaComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error cargando detalles del evento:', error);
-        // Fallback: usar datos simulados basados en el tipo de evento
-        this.cargarTiposEntradaSimulados();
+        this.snackBar.open('Error al cargar tipos de entrada', 'Cerrar', { duration: 3000 });
       }
     });
   }
@@ -566,7 +817,6 @@ export class CrearReservaComponent implements OnInit {
       Object.keys(evento.precios).forEach(tipoKey => {
         const tipo = tipoKey as TipoEntrada;
         const precio = evento.precios![tipoKey];
-        const capacidadTotal = evento.capacidades![tipoKey] || 0;
         const disponible = evento.disponibilidadPorTipo![tipoKey] || 0;
 
         tiposDisponibles.push({
@@ -575,69 +825,28 @@ export class CrearReservaComponent implements OnInit {
           disponible
         });
       });
-    } else if (evento.tiposEntrada) {
-      // Si solo tiene tipos de entrada sin configuración detallada
-      evento.tiposEntrada.forEach(tipo => {
-        const precio = evento.precios?.[tipo] || 1000; // Precio por defecto
-        const disponible = Math.floor(evento.capacidadTotal / evento.tiposEntrada!.length);
-        
-        tiposDisponibles.push({
-          tipo,
-          precio,
-          disponible
-        });
-      });
-    } else {
-      // Fallback: usar tipos según el tipo de evento
-      this.cargarTiposEntradaSimulados();
-      return;
     }
 
     this.tiposEntradaDisponibles = tiposDisponibles;
   }
 
-  cargarTiposEntradaSimulados(): void {
-    if (!this.eventoSeleccionado) return;
-
-    // Solo como fallback - estos precios deberían venir del evento real
-    let tiposParaEvento: Array<{tipo: TipoEntrada, precio: number, disponible: number}> = [];
-
-    switch (this.eventoSeleccionado.tipoEvento) {
-      case 'OBRA_TEATRO':
-        tiposParaEvento = [
-          { tipo: TipoEntrada.GENERAL, precio: 2500, disponible: 45 },
-          { tipo: TipoEntrada.VIP, precio: 4000, disponible: 12 }
-        ];
-        break;
-      
-      case 'RECITAL':
-        tiposParaEvento = [
-          { tipo: TipoEntrada.CAMPO, precio: 3500, disponible: 200 },
-          { tipo: TipoEntrada.PLATEA, precio: 5000, disponible: 80 },
-          { tipo: TipoEntrada.PALCO, precio: 8000, disponible: 20 }
-        ];
-        break;
-      
-      case 'CHARLA_CONFERENCIA':
-        tiposParaEvento = [
-          { tipo: TipoEntrada.SIN_MEET_GREET, precio: 1500, disponible: 100 },
-          { tipo: TipoEntrada.CON_MEET_GREET, precio: 3000, disponible: 30 }
-        ];
-        break;
-      
-      default:
-        tiposParaEvento = [
-          { tipo: TipoEntrada.GENERAL, precio: 2500, disponible: 45 }
-        ];
+  seleccionarTipoEntrada(tipo: TipoEntrada, precio: number): void {
+    // No permitir seleccionar si no hay disponibilidad
+    const tipoInfo = this.tiposEntradaDisponibles.find(t => t.tipo === tipo);
+    if (!tipoInfo || tipoInfo.disponible === 0) {
+      this.snackBar.open('No hay disponibilidad para este tipo de entrada', 'Cerrar', { duration: 3000 });
+      return;
     }
 
-    this.tiposEntradaDisponibles = tiposParaEvento;
-  }
-
-  seleccionarTipoEntrada(tipo: TipoEntrada, precio: number): void {
     this.tipoEntradaSeleccionado = tipo;
     this.precioFinal = precio;
     this.reservaForm.patchValue({ tipoEntrada: tipo });
+    
+    // Resetear pase gratuito si estaba activado
+    if (this.usandoPaseGratuito) {
+      this.usandoPaseGratuito = false;
+      this.reservaForm.patchValue({ usarPaseGratuito: false });
+    }
   }
 
   togglePaseGratuito(usar: boolean): void {
@@ -662,12 +871,18 @@ export class CrearReservaComponent implements OnInit {
 
     this.reservaService.crearReserva(reservaRequest).subscribe({
       next: (reserva) => {
-        this.snackBar.open('Reserva creada exitosamente', 'Cerrar', { duration: 3000 });
+        this.snackBar.open('Reserva creada exitosamente', 'Cerrar', { 
+          duration: 3000,
+          panelClass: ['success-snackbar']
+        });
         this.router.navigate(['/reservas']);
       },
       error: (error) => {
         console.error('Error creando reserva:', error);
-        this.snackBar.open('Error al crear la reserva', 'Cerrar', { duration: 3000 });
+        this.snackBar.open('Error al crear la reserva', 'Cerrar', { 
+          duration: 3000,
+          panelClass: ['error-snackbar']
+        });
         this.creandoReserva = false;
       }
     });
@@ -675,11 +890,18 @@ export class CrearReservaComponent implements OnInit {
 
   // Métodos de utilidad
   formatearFecha(fecha: string): string {
-    return new Date(fecha).toLocaleDateString('es-ES');
+    return new Date(fecha).toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   }
 
   formatearHora(fecha: string): string {
-    return new Date(fecha).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    return new Date(fecha).toLocaleTimeString('es-ES', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
   }
 
   getNombreTipoEntrada(tipo: TipoEntrada | null): string {

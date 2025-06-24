@@ -188,27 +188,6 @@ import { Cliente } from '../../../models/cliente';
               </div>
             </div>
           </mat-tab>
-
-          <!-- Tab: Actividad Reciente -->
-          <mat-tab>
-            <ng-template mat-tab-label>
-              <mat-icon>history</mat-icon>
-              Actividad
-            </ng-template>
-            
-            <div class="tab-content">
-              <div class="actividad-placeholder">
-                <mat-icon class="placeholder-icon">event_note</mat-icon>
-                <h3>Historial de Actividad</h3>
-                <p>Aquí se mostrará el historial de reservas y eventos del cliente</p>
-                <button mat-raised-button color="primary">
-                  <mat-icon>visibility</mat-icon>
-                  Ver Reservas Completas
-                </button>
-              </div>
-            </div>
-          </mat-tab>
-
         </mat-tab-group>
       </mat-dialog-content>
 

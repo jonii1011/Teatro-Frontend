@@ -26,6 +26,7 @@ import { ClienteService } from '../../services/cliente';
 import { EventoService } from '../../services/evento';
 import { Reserva, EstadoReserva } from '../../models/reserva';
 import { TipoEntrada } from '../../models/evento';
+import { ReservaDetallesComponent } from './reserva-detalles/reserva-detalles';
 
 @Component({
   selector: 'app-reservas',
@@ -157,26 +158,54 @@ import { TipoEntrada } from '../../models/evento';
               <ng-container matColumnDef="estado">
                 <th mat-header-cell *matHeaderCellDef>Estado</th>
                 <td mat-cell *matCellDef="let reserva">
-                  <span>{{ getNombreEstado(reserva.estado) }}</span>
+                  <span class="estado-badge" [ngClass]="'estado-' + reserva.estado.toLowerCase()">
+                    {{ getNombreEstado(reserva.estado) }}
+                  </span>
                 </td>
               </ng-container>
 
               <ng-container matColumnDef="acciones">
                 <th mat-header-cell *matHeaderCellDef>Acciones</th>
-                <td mat-cell *matCellDef="let reserva">
-                  <button mat-icon-button (click)="verDetalles(reserva)">
+                <td mat-cell *matCellDef="let reserva" (click)="$event.stopPropagation()">
+                  <button mat-icon-button 
+                          [matMenuTriggerFor]="menuAcciones"
+                          class="menu-trigger">
                     <mat-icon>more_vert</mat-icon>
                   </button>
+                  
+                  <mat-menu #menuAcciones="matMenu">
+                    <button mat-menu-item (click)="verDetalles(reserva)">
+                      <mat-icon>visibility</mat-icon>
+                      <span>Ver detalles</span>
+                    </button>
+                    
+                    <button mat-menu-item 
+                            (click)="cancelarReservaDirecta(reserva)"
+                            *ngIf="puedeCancelarReserva(reserva)"
+                            class="danger">
+                      <mat-icon>cancel</mat-icon>
+                      <span>Cancelar reserva</span>
+                    </button>
+                  </mat-menu>
                 </td>
               </ng-container>
 
               <tr mat-header-row *matHeaderRowDef="columnasVisibles"></tr>
-              <tr mat-row *matRowDef="let row; columns: columnasVisibles;" (click)="verDetalles(row)"></tr>
+              <tr mat-row *matRowDef="let row; columns: columnasVisibles;" 
+                  class="reserva-row"
+                  [class.reserva-cancelada]="row.estado === EstadoReserva.CANCELADA"
+                  [class.reserva-confirmada]="row.estado === EstadoReserva.CONFIRMADA"
+                  (click)="verDetalles(row)"></tr>
             </table>
 
             <div *ngIf="reservasFiltradas.length === 0" class="empty-state">
-              <h3>No hay reservas</h3>
-              <button mat-raised-button color="primary" (click)="crearNuevaReserva()">
+              <mat-icon class="empty-icon">event_note</mat-icon>
+              <h3>{{ reservas.length === 0 ? 'No hay reservas creadas' : 'No se encontraron reservas' }}</h3>
+              <p>{{ reservas.length === 0 ? 'Comienza creando tu primera reserva' : 'Prueba ajustando los filtros de búsqueda' }}</p>
+              <button mat-raised-button 
+                      color="primary" 
+                      (click)="crearNuevaReserva()"
+                      *ngIf="reservas.length === 0">
                 <mat-icon>add</mat-icon>
                 Crear Reserva
               </button>
@@ -185,8 +214,8 @@ import { TipoEntrada } from '../../models/evento';
 
           <ng-template #loadingTemplate>
             <div class="loading-container">
-              <mat-spinner></mat-spinner>
-              <p>Cargando...</p>
+              <mat-spinner diameter="50"></mat-spinner>
+              <p>Cargando reservas...</p>
             </div>
           </ng-template>
         </mat-card-content>
@@ -194,19 +223,221 @@ import { TipoEntrada } from '../../models/evento';
     </div>
   `,
   styles: [`
-    .reservas-container { max-width: 1200px; margin: 0 auto; padding: 24px; }
-    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-    .page-title { display: flex; align-items: center; gap: 8px; margin: 0; }
-    .filters-card, .table-card { margin-bottom: 24px; }
-    .filters-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
-    .search-field { flex: 1; max-width: 300px; }
-    .filter-chips { display: flex; gap: 8px; }
-    .filter-chip { padding: 8px 16px; border: 1px solid #ddd; border-radius: 20px; background: white; cursor: pointer; }
-    .filter-chip.selected { background: #000; color: white; }
-    .stats-summary { margin-top: 16px; }
-    .table-container { overflow-x: auto; }
-    .empty-state, .loading-container { text-align: center; padding: 40px; }
-    mat-cell, mat-header-cell { padding: 16px 8px; }
+    .reservas-container { 
+      max-width: 1200px; 
+      margin: 0 auto; 
+      padding: 24px; 
+    }
+    
+    .page-header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      margin-bottom: 24px; 
+    }
+    
+    .page-title { 
+      display: flex; 
+      align-items: center; 
+      gap: 8px; 
+      margin: 0; 
+      color: #333;
+      font-size: 1.8rem;
+    }
+    
+    .title-icon {
+      font-size: 2rem;
+      width: 2rem;
+      height: 2rem;
+    }
+    
+    .filters-card, .table-card { 
+      margin-bottom: 24px; 
+    }
+    
+    .filters-row { 
+      display: flex; 
+      gap: 16px; 
+      align-items: center; 
+      flex-wrap: wrap; 
+    }
+    
+    .search-field { 
+      flex: 1; 
+      max-width: 300px; 
+    }
+    
+    .filter-select {
+      min-width: 120px;
+    }
+    
+    .filter-chips { 
+      display: flex; 
+      gap: 8px; 
+    }
+    
+    .filter-chip { 
+      padding: 8px 16px; 
+      border: 1px solid #ddd; 
+      border-radius: 20px; 
+      background: white; 
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.9rem;
+      transition: all 0.2s ease;
+    }
+    
+    .filter-chip:hover {
+      border-color: #007bff;
+    }
+    
+    .filter-chip.selected { 
+      background: #007bff; 
+      color: white;
+      border-color: #007bff;
+    }
+    
+    .stats-summary { 
+      margin-top: 16px;
+      color: #666;
+    }
+    
+    .stat-item {
+      font-size: 0.9rem;
+    }
+    
+    .table-container { 
+      overflow-x: auto; 
+    }
+    
+    .reservas-table {
+      width: 100%;
+    }
+    
+    .empty-state, .loading-container { 
+      text-align: center; 
+      padding: 40px;
+      color: #666;
+    }
+    
+    .empty-icon {
+      font-size: 4rem;
+      width: 4rem;
+      height: 4rem;
+      color: #ccc;
+      margin-bottom: 16px;
+    }
+    
+    mat-cell, mat-header-cell { 
+      padding: 16px 8px; 
+    }
+
+    /* Estilos para el menú */
+    .menu-trigger {
+      transition: all 0.2s ease;
+    }
+
+    .menu-trigger:hover {
+      background-color: rgba(0, 0, 0, 0.1);
+    }
+
+    /* Estilos para items del menú peligrosos */
+    ::ng-deep .mat-mdc-menu-panel .danger {
+      color: #d32f2f !important;
+    }
+
+    ::ng-deep .mat-mdc-menu-panel .danger mat-icon {
+      color: #d32f2f !important;
+    }
+
+    ::ng-deep .mat-mdc-menu-panel .danger:hover {
+      background-color: rgba(211, 47, 47, 0.1) !important;
+    }
+
+    /* Estilos para las filas según estado */
+    .reserva-row {
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    .reserva-row:hover {
+      background-color: rgba(0, 0, 0, 0.04);
+    }
+
+    .reserva-row.reserva-cancelada {
+      opacity: 0.7;
+      background-color: rgba(244, 67, 54, 0.05);
+    }
+
+    .reserva-row.reserva-confirmada {
+      background-color: rgba(76, 175, 80, 0.05);
+    }
+
+    /* Badges de estado */
+    .estado-badge {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+
+    .estado-badge.estado-confirmada {
+      background-color: #e8f5e8;
+      color: #2e7d32;
+    }
+
+    .estado-badge.estado-cancelada {
+      background-color: #ffebee;
+      color: #c62828;
+    }
+
+    /* Estilos para snackbars */
+    ::ng-deep .success-snackbar {
+      background-color: #4caf50 !important;
+      color: white !important;
+    }
+
+    ::ng-deep .error-snackbar {
+      background-color: #f44336 !important;
+      color: white !important;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .reservas-container {
+        padding: 16px;
+      }
+      
+      .page-header {
+        flex-direction: column;
+        gap: 16px;
+        align-items: stretch;
+      }
+      
+      .filters-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .search-field, .filter-select {
+        max-width: none;
+      }
+      
+      .filter-chips {
+        justify-content: center;
+      }
+      
+      .menu-trigger {
+        padding: 8px;
+      }
+      
+      ::ng-deep .mat-mdc-menu-panel {
+        min-width: 200px;
+      }
+    }
   `]
 })
 export class ReservasComponent implements OnInit {
@@ -261,7 +492,11 @@ export class ReservasComponent implements OnInit {
         this.loading = false;
       },
       error: (error) => {
-        console.error('Error:', error);
+        console.error('Error al cargar reservas:', error);
+        this.snackBar.open('Error al cargar las reservas', 'Cerrar', { 
+          duration: 3000,
+          panelClass: ['error-snackbar']
+        });
         this.loading = false;
       }
     });
@@ -275,6 +510,8 @@ export class ReservasComponent implements OnInit {
       filtradas = filtradas.filter(reserva =>
         reserva.codigoReserva?.toLowerCase().includes(texto) ||
         reserva.cliente.nombre.toLowerCase().includes(texto) ||
+        reserva.cliente.apellido.toLowerCase().includes(texto) ||
+        reserva.cliente.email.toLowerCase().includes(texto) ||
         reserva.evento.nombre.toLowerCase().includes(texto)
       );
     }
@@ -313,11 +550,57 @@ export class ReservasComponent implements OnInit {
   }
 
   crearNuevaReserva(): void {
-  this.router.navigate(['/reservas/crear']);
+    this.router.navigate(['/reservas/crear']);
   }
 
   verDetalles(reserva: Reserva): void {
-    console.log('Ver detalles:', reserva);
+    const dialogRef = this.dialog.open(ReservaDetallesComponent, {
+      data: reserva,
+      width: '90vw',
+      maxWidth: '700px',
+      height: 'auto',
+      maxHeight: '90vh'
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result?.action === 'nueva-reserva') {
+        // Navegar a crear nueva reserva con el cliente preseleccionado
+        this.router.navigate(['/reservas/crear'], { 
+          queryParams: { clienteId: result.clienteId } 
+        });
+      }
+      // Recargar las reservas para obtener los datos actualizados
+      this.cargarReservas();
+    });
+  }
+
+  // Métodos de validación para el menú
+  puedeCancelarReserva(reserva: Reserva): boolean {
+    return reserva.estado === EstadoReserva.CONFIRMADA && 
+           new Date(reserva.evento.fechaHora) > new Date();
+  }
+
+  // Métodos de acción directa desde el menú
+  cancelarReservaDirecta(reserva: Reserva): void {
+    const motivo = prompt('Ingrese el motivo de cancelación:');
+    if (motivo && reserva.id) {
+      this.reservaService.cancelarReserva(reserva.id, motivo).subscribe({
+        next: (reservaActualizada) => {
+          this.snackBar.open('Reserva cancelada exitosamente', 'Cerrar', { 
+            duration: 3000,
+            panelClass: ['success-snackbar']
+          });
+          this.cargarReservas(); // Recargar la lista
+        },
+        error: (error) => {
+          console.error('Error al cancelar reserva:', error);
+          this.snackBar.open('Error al cancelar la reserva', 'Cerrar', { 
+            duration: 3000,
+            panelClass: ['error-snackbar']
+          });
+        }
+      });
+    }
   }
 
   formatDate(fecha: string): string {

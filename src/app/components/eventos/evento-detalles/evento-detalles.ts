@@ -8,6 +8,8 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatDialog } from '@angular/material/dialog';
+import { EventoFormComponent } from '../evento-form/evento-form';
 
 import { Evento, TipoEvento, TipoEntrada } from '../../../models/evento';
 
@@ -110,13 +112,7 @@ interface EntradaDetalle {
                   </div>
                 </div>
 
-                <div class="info-item" *ngIf="evento.fechaCreacion">
-                  <mat-icon class="info-icon">schedule</mat-icon>
-                  <div class="info-content">
-                    <span class="info-label">Fecha de Creación</span>
-                    <span class="info-value">{{ formatearFechaHora(evento.fechaCreacion) }}</span>
-                  </div>
-                </div>
+                
               </div>
             </div>
           </mat-tab>
@@ -262,40 +258,8 @@ interface EntradaDetalle {
               </div>
             </div>
           </mat-tab>
-
-          <!-- Tab: Actividad Reciente -->
-          <mat-tab>
-            <ng-template mat-tab-label>
-              <mat-icon>history</mat-icon>
-              Actividad
-            </ng-template>
-            
-            <div class="tab-content">
-              <div class="actividad-placeholder">
-                <mat-icon class="placeholder-icon">event_note</mat-icon>
-                <h3>Historial de Reservas</h3>
-                <p>Aquí se mostrará el historial de reservas y actividad del evento</p>
-                <button mat-raised-button color="primary">
-                  <mat-icon>visibility</mat-icon>
-                  Ver Reservas Completas
-                </button>
-              </div>
-            </div>
-          </mat-tab>
-
         </mat-tab-group>
       </mat-dialog-content>
-
-      <mat-dialog-actions class="dialog-actions">
-        <button mat-button mat-dialog-close>
-          <mat-icon>close</mat-icon>
-          Cerrar
-        </button>
-        <button mat-raised-button color="primary" (click)="editarEvento()">
-          <mat-icon>edit</mat-icon>
-          Editar Evento
-        </button>
-      </mat-dialog-actions>
     </div>
   `,
   styles: [`
@@ -817,35 +781,72 @@ export class EventoDetallesComponent {
     @Inject(MAT_DIALOG_DATA) public evento: Evento
   ) {}
 
-  formatearFecha(fecha: string): string {
-    const fechaObj = new Date(fecha);
-    return fechaObj.toLocaleDateString('es-ES', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+  private crearFechaLocal(fechaString: string): Date {
+  if (fechaString.includes('T')) {
+    // Remover Z y crear fecha local
+    return new Date(fechaString.replace('Z', ''));
+  } else {
+    // Solo fecha, agregar hora local
+    return new Date(fechaString + 'T00:00:00');
   }
+}
 
-  formatearHora(fecha: string): string {
-    const fechaObj = new Date(fecha);
-    return fechaObj.toLocaleTimeString('es-ES', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  }
+formatearFecha(fecha: string): string {
+  // Parsear manualmente la fecha para evitar problemas de zona horaria
+  const fechaParts = fecha.split('T')[0].split('-');
+  const año = parseInt(fechaParts[0]);
+  const mes = parseInt(fechaParts[1]) - 1; // Los meses en JS van de 0-11
+  const dia = parseInt(fechaParts[2]);
+  
+  const fechaObj = new Date(año, mes, dia);
+  
+  return fechaObj.toLocaleDateString('es-ES', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+}
 
-  formatearFechaHora(fecha: string | undefined): string {
-    if (!fecha) return 'No especificada';
-    const fechaObj = new Date(fecha);
-    return fechaObj.toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+formatearHora(fecha: string): string {
+  // Si tiene hora, extraerla
+  if (fecha.includes('T')) {
+    const horaParts = fecha.split('T')[1].split(':');
+    const hora = parseInt(horaParts[0]);
+    const minuto = parseInt(horaParts[1]);
+    
+    return `${hora.toString().padStart(2, '0')}:${minuto.toString().padStart(2, '0')}`;
   }
+  return '00:00';
+}
+
+formatearFechaHora(fecha: string | undefined): string {
+  if (!fecha) return 'No especificada';
+  
+  const fechaParts = fecha.split('T')[0].split('-');
+  const año = parseInt(fechaParts[0]);
+  const mes = parseInt(fechaParts[1]) - 1;
+  const dia = parseInt(fechaParts[2]);
+  
+  let hora = 0;
+  let minuto = 0;
+  
+  if (fecha.includes('T')) {
+    const horaParts = fecha.split('T')[1].split(':');
+    hora = parseInt(horaParts[0]);
+    minuto = parseInt(horaParts[1]);
+  }
+  
+  const fechaObj = new Date(año, mes, dia, hora, minuto);
+  
+  return fechaObj.toLocaleDateString('es-ES', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
 
   getNombreTipoEvento(tipo: TipoEvento): string {
     return this.tiposEventoNombres[tipo];
@@ -872,7 +873,6 @@ export class EventoDetallesComponent {
     }
   }
 
-  // ✅ MÉTODO CORREGIDO para usar disponibilidadPorTipo
   getEntradasDisponibles(): EntradaDetalle[] {
     const entradas: EntradaDetalle[] = [];
     
@@ -913,7 +913,6 @@ export class EventoDetallesComponent {
     return Math.round((entrada.reservadas / entrada.capacidad) * 100);
   }
 
-  // ✅ MÉTODO CORREGIDO para obtener total de reservas activas
   getTotalReservasActivas(): number {
     return this.evento.totalReservasActivas || 0;
   }
@@ -929,7 +928,6 @@ export class EventoDetallesComponent {
     return Math.round((ocupadas / this.evento.capacidadTotal) * 100);
   }
 
-  // ✅ MÉTODO CORREGIDO para calcular ingresos estimados
   getIngresosEstimados(): number {
     let total = 0;
     const entradas = this.getEntradasDisponibles();
@@ -982,20 +980,12 @@ export class EventoDetallesComponent {
     return 'El evento recién comienza a tener reservas';
   }
 
-  // ✅ MÉTODO CORREGIDO para verificar si está vigente
   esEventoVigente(): boolean {
-    // Si el backend proporciona estaVigente, usarlo
     if (this.evento.estaVigente !== undefined) {
       return this.evento.estaVigente;
     }
-    
-    // Sino, calcularlo manualmente
     const fechaEvento = new Date(this.evento.fechaHora);
     const ahora = new Date();
     return this.evento.activo !== false && fechaEvento > ahora;
-  }
-
-  editarEvento(): void {
-    this.dialogRef.close({ action: 'edit', evento: this.evento });
   }
 }

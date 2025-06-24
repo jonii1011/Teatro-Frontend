@@ -57,8 +57,8 @@ import { Reserva, EstadoReserva } from '../../models/reserva';
         <mat-card class="stat-card reservations">
           <mat-card-header>
             <mat-icon mat-card-avatar>confirmation_number</mat-icon>
-            <mat-card-title>{{ reservasPendientes.length || 0 }}</mat-card-title>
-            <mat-card-subtitle>Reservas Pendientes</mat-card-subtitle>
+            <mat-card-title>{{ totalReservas || 0 }}</mat-card-title>
+            <mat-card-subtitle>Total Reservas</mat-card-subtitle>
           </mat-card-header>
           <mat-card-actions>
             <button mat-button routerLink="/reservas">Ver Reservas</button>
@@ -110,7 +110,7 @@ import { Reserva, EstadoReserva } from '../../models/reserva';
         </mat-card-content>
       </mat-card>
 
-      <!-- Eventos Próximos y Top Clientes -->
+      <!-- Eventos Próximos y Reservas Recientes -->
       <div class="info-grid">
         <mat-card class="info-card">
           <mat-card-header>
@@ -137,6 +137,36 @@ import { Reserva, EstadoReserva } from '../../models/reserva';
 
         <mat-card class="info-card">
           <mat-card-header>
+            <mat-card-title>🎟️ Reservas Recientes</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div *ngIf="reservasRecientes && reservasRecientes.length > 0; else noReservas">
+              <div class="reserva-item" *ngFor="let reservaItem of reservasRecientes.slice(0, 5)">
+                <div class="reserva-info">
+                  <strong>{{ reservaItem.evento.nombre }}</strong>
+                  <span class="cliente-name">{{ reservaItem.cliente.nombre }} {{ reservaItem.cliente.apellido }}</span>
+                  <span class="reserva-date">{{ formatDate(reservaItem.fechaReserva || '') }}</span>
+                </div>
+                <div class="reserva-status">
+                  <span class="status-badge" [ngClass]="'status-' + reservaItem.estado.toLowerCase()">
+                    {{ getEstadoTexto(reservaItem.estado) }}
+                  </span>
+                  <span class="precio" *ngIf="!reservaItem.esPaseGratuito">\${{ (reservaItem.precioPagado || 0) | number:'1.0-0' }}</span>
+                  <span class="pase-gratuito" *ngIf="reservaItem.esPaseGratuito">Gratis</span>
+                </div>
+              </div>
+            </div>
+            <ng-template #noReservas>
+              <p class="no-data">No hay reservas recientes</p>
+            </ng-template>
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      <!-- Segunda fila: Top Clientes y Estadísticas Adicionales -->
+      <div class="info-grid">
+        <mat-card class="info-card">
+          <mat-card-header>
             <mat-card-title>⭐ Top Clientes Frecuentes</mat-card-title>
           </mat-card-header>
           <mat-card-content>
@@ -156,6 +186,32 @@ import { Reserva, EstadoReserva } from '../../models/reserva';
             <ng-template #noClientes>
               <p class="no-data">No hay clientes frecuentes</p>
             </ng-template>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="info-card">
+          <mat-card-header>
+            <mat-card-title>📊 Resumen de Estados</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="resumen-estados">
+              <div class="estado-item">
+                <div class="estado-numero confirmadas">{{ reservasConfirmadas }}</div>
+                <span>Confirmadas</span>
+              </div>
+              <div class="estado-item">
+                <div class="estado-numero canceladas">{{ reservasCanceladas }}</div>
+                <span>Canceladas</span>
+              </div>
+              <div class="estado-item">
+                <div class="estado-numero eventos-hoy">{{ eventosHoy }}</div>
+                <span>Eventos Hoy</span>
+              </div>
+              <div class="estado-item">
+                <div class="estado-numero pases-gratuitos">{{ totalPasesGratuitos }}</div>
+                <span>Pases Gratuitos</span>
+              </div>
+            </div>
           </mat-card-content>
         </mat-card>
       </div>
@@ -244,32 +300,34 @@ import { Reserva, EstadoReserva } from '../../models/reserva';
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
       gap: 20px;
+      margin-bottom: 30px;
     }
 
-    .event-item, .client-item {
+    .event-item, .client-item, .reserva-item {
       display: flex;
       align-items: center;
       padding: 10px 0;
       border-bottom: 1px solid #eee;
     }
 
-    .event-item:last-child, .client-item:last-child {
+    .event-item:last-child, .client-item:last-child, .reserva-item:last-child {
       border-bottom: none;
     }
 
-    .event-info, .client-info {
+    .event-info, .client-info, .reserva-info {
       flex: 1;
     }
 
-    .event-info strong, .client-info strong {
+    .event-info strong, .client-info strong, .reserva-info strong {
       display: block;
       margin-bottom: 5px;
     }
 
-    .event-date, .event-type, .client-events {
+    .event-date, .event-type, .client-events, .cliente-name, .reserva-date {
       font-size: 0.9em;
       color: #666;
       margin-right: 10px;
+      display: block;
     }
 
     .client-rank {
@@ -285,7 +343,7 @@ import { Reserva, EstadoReserva } from '../../models/reserva';
       margin-right: 15px;
     }
 
-    .client-badges {
+    .client-badges, .reserva-status {
       display: flex;
       gap: 5px;
       flex-direction: column;
@@ -305,6 +363,35 @@ import { Reserva, EstadoReserva } from '../../models/reserva';
       color: #f57c00;
     }
 
+    .status-badge {
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.8em;
+      font-weight: 500;
+    }
+
+    .status-badge.status-confirmada {
+      background: #e8f5e8;
+      color: #2e7d32;
+    }
+
+    .status-badge.status-cancelada {
+      background: #ffebee;
+      color: #c62828;
+    }
+
+    .precio {
+      color: #4CAF50;
+      font-weight: bold;
+      font-size: 0.9em;
+    }
+
+    .pase-gratuito {
+      color: #ff9800;
+      font-weight: bold;
+      font-size: 0.8em;
+    }
+
     .availability-text {
       color: #4CAF50;
       font-weight: bold;
@@ -315,13 +402,64 @@ import { Reserva, EstadoReserva } from '../../models/reserva';
       color: #666;
       font-style: italic;
     }
+
+    /* Resumen de Estados */
+    .resumen-estados {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+
+    .estado-item {
+      text-align: center;
+    }
+
+    .estado-numero {
+      font-size: 2em;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .estado-numero.confirmadas { color: #4CAF50; }
+    .estado-numero.canceladas { color: #f44336; }
+    .estado-numero.eventos-hoy { color: #2196F3; }
+    .estado-numero.pases-gratuitos { color: #ff9800; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .dashboard-container {
+        padding: 10px;
+      }
+      
+      .dashboard-title {
+        font-size: 2em;
+      }
+      
+      .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      }
+      
+      .info-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .resumen-estados {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+      }
+    }
   `]
 })
 export class DashboardComponent implements OnInit {
   estadisticas: EstadisticasFidelizacion | null = null;
   eventosVigentes: EventoResumen[] = [];
   topClientes: Cliente[] = [];
-  reservasPendientes: Reserva[] = [];
+  reservasRecientes: Reserva[] = [];
+  totalReservas = 0;
+  reservasConfirmadas = 0;
+  reservasCanceladas = 0;
+  eventosHoy = 0;
+  totalPasesGratuitos = 0;
 
   constructor(
     private fidelizacionService: FidelizacionService,
@@ -351,6 +489,7 @@ export class DashboardComponent implements OnInit {
       next: (data) => {
         console.log('Eventos vigentes cargados:', data);
         this.eventosVigentes = data;
+        this.calcularEventosHoy();
       },
       error: (error) => console.error('Error cargando eventos:', error)
     });
@@ -363,9 +502,36 @@ export class DashboardComponent implements OnInit {
       },
       error: (error) => console.error('Error cargando clientes:', error)
     });
+
+    // Cargar todas las reservas para estadísticas
+    this.reservaService.obtenerTodasLasReservas().subscribe({
+      next: (data) => {
+        console.log('Reservas cargadas:', data);
+        this.reservasRecientes = data.sort((a, b) => 
+          new Date(b.fechaReserva || '').getTime() - new Date(a.fechaReserva || '').getTime()
+        );
+        this.calcularEstadisticasReservas(data);
+      },
+      error: (error) => console.error('Error cargando reservas:', error)
+    });
+  }
+
+  calcularEstadisticasReservas(reservas: Reserva[]): void {
+    this.totalReservas = reservas.length;
+    this.reservasConfirmadas = reservas.filter(r => r.estado === EstadoReserva.CONFIRMADA).length;
+    this.reservasCanceladas = reservas.filter(r => r.estado === EstadoReserva.CANCELADA).length;
+    this.totalPasesGratuitos = reservas.filter(r => r.esPaseGratuito).length;
+  }
+
+  calcularEventosHoy(): void {
+    const hoy = new Date().toDateString();
+    this.eventosHoy = this.eventosVigentes.filter(evento => 
+      new Date(evento.fechaHora).toDateString() === hoy
+    ).length;
   }
 
   formatDate(dateString: string): string {
+    if (!dateString) return 'Fecha no disponible';
     const date = new Date(dateString);
     return date.toLocaleDateString('es-ES', { 
       day: '2-digit', 
@@ -390,5 +556,13 @@ export class DashboardComponent implements OnInit {
     if (eventos >= 10) return '🥈 Silver';
     if (eventos >= 5) return '🥉 Bronze';
     return '⭐ Nuevo';
+  }
+
+  getEstadoTexto(estado: EstadoReserva): string {
+    const estados: {[key: string]: string} = {
+      'CONFIRMADA': 'Confirmada',
+      'CANCELADA': 'Cancelada'
+    };
+    return estados[estado] || estado;
   }
 }
