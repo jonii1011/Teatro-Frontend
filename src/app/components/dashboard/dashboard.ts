@@ -1,4 +1,3 @@
-// src/app/components/dashboard/dashboard.component.ts
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
@@ -7,14 +6,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTableModule } from '@angular/material/table';
 import { RouterLink } from '@angular/router';
-
-// Importaciones correctas de los servicios
 import { FidelizacionService, EstadisticasFidelizacion } from '../../services/fidelizacion';
 import { EventoService } from '../../services/evento';
 import { ClienteService } from '../../services/cliente';
 import { ReservaService } from '../../services/reserva';
-
-// Importaciones de modelos
 import { EventoResumen } from '../../models/evento';
 import { Cliente } from '../../models/cliente';
 import { Reserva, EstadoReserva } from '../../models/reserva';
@@ -367,15 +362,6 @@ export class DashboardComponent implements OnInit {
         this.topClientes = data;
       },
       error: (error) => console.error('Error cargando clientes:', error)
-    });
-
-    // Cargar reservas pendientes
-    this.reservaService.obtenerReservasPorEstado(EstadoReserva.PENDIENTE).subscribe({
-      next: (data) => {
-        console.log('Reservas pendientes cargadas:', data);
-        this.reservasPendientes = data;
-      },
-      error: (error) => console.error('Error cargando reservas:', error)
     });
   }
 

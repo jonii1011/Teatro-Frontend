@@ -36,6 +36,14 @@ export class ClienteService {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 
+  activarCliente(id: number): Observable<void> {
+  return this.http.put<void>(`${this.apiUrl}/${id}/activar`, {});
+  }
+
+  toggleActivoCliente(id: number, activo: boolean): Observable<void> {
+  return activo ? this.activarCliente(id) : this.eliminarCliente(id);
+  }
+
   // Búsquedas
   buscarClientesPorNombre(termino: string): Observable<ClienteResumen[]> {
     return this.http.get<ClienteResumen[]>(`${this.apiUrl}/buscar?termino=${termino}`);

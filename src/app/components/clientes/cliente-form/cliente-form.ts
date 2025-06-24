@@ -1,4 +1,3 @@
-// src/app/components/cliente-form/cliente-form.component.ts
 import { Component, OnInit, Inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
@@ -10,7 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule } from '@angular/material/core';
+import { MatNativeDateModule, provideNativeDateAdapter } from '@angular/material/core';
 
 import { ClienteService } from '../../../services/cliente';
 import { Cliente, ClienteRequest } from '../../../models/cliente';
@@ -23,6 +22,7 @@ export interface ClienteFormData {
 @Component({
   selector: 'app-cliente-form',
   standalone: true,
+  providers: [provideNativeDateAdapter()], // ← Agregar esto
   imports: [
     CommonModule,
     ReactiveFormsModule,
@@ -148,9 +148,11 @@ export interface ClienteFormData {
                 <input matInput 
                        [matDatepicker]="picker" 
                        formControlName="fechaNacimiento"
-                       placeholder="dd/mm/aaaa"
+                       placeholder="Seleccione una fecha"
                        readonly>
-                <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+                <mat-datepicker-toggle matSuffix [for]="picker">
+                  <mat-icon matDatepickerToggleIcon>calendar_today</mat-icon>
+                </mat-datepicker-toggle>
                 <mat-datepicker #picker></mat-datepicker>
                 <mat-error *ngIf="clienteForm.get('fechaNacimiento')?.hasError('required')">
                   La fecha de nacimiento es obligatoria
@@ -390,8 +392,7 @@ export class ClienteFormComponent implements OnInit {
       fechaNacimiento: ['', [
         Validators.required,
         this.futureDateValidator
-      ]],
-      direccion: ['', [Validators.maxLength(200)]]
+      ]]
     });
   }
 
@@ -403,7 +404,7 @@ export class ClienteFormComponent implements OnInit {
       email: cliente.email,
       dni: cliente.dni,
       telefono: cliente.telefono || '',
-      fechaNacimiento: cliente.fechaNacimiento ? new Date(cliente.fechaNacimiento) : ''
+      fechaNacimiento: cliente.fechaNacimiento ? new Date(cliente.fechaNacimiento + 'T00:00:00') : ''
     });
   }
 
@@ -438,14 +439,13 @@ export class ClienteFormComponent implements OnInit {
 
     this.loading = true;
     const formValue = this.clienteForm.value;
-    
-    // Convertir fecha a string ISO
+
     const clienteData: ClienteRequest = {
       ...formValue,
       fechaNacimiento: formValue.fechaNacimiento ? 
-        new Date(formValue.fechaNacimiento).toISOString().split('T')[0] : ''
+        this.formatDate(formValue.fechaNacimiento) : ''
     };
-
+    
     const operation = this.data.isEdit ?
       this.clienteService.actualizarCliente(this.data.cliente!.id!, clienteData) :
       this.clienteService.crearCliente(clienteData);
@@ -482,6 +482,13 @@ export class ClienteFormComponent implements OnInit {
       }
     });
   }
+
+  private formatDate(date: Date): string {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
 
   onCancel(): void {
     this.dialogRef.close();

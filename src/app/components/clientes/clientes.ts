@@ -1,4 +1,3 @@
-// src/app/components/clientes/clientes.component.ts
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
@@ -21,6 +20,7 @@ import { FormsModule } from '@angular/forms';
 import { ClienteService } from '../../services/cliente';
 import { Cliente } from '../../models/cliente';
 import { ClienteFormComponent } from '../../components/clientes/cliente-form/cliente-form';
+import { ClienteDetallesComponent } from './cliente-detalles/cliente-detalles';
 
 @Component({
   selector: 'app-clientes',
@@ -215,17 +215,13 @@ import { ClienteFormComponent } from '../../components/clientes/cliente-form/cli
                   </button>
                   
                   <mat-menu #menuAcciones="matMenu">
-                    <button mat-menu-item (click)="editarCliente(cliente)">
-                      <mat-icon>edit</mat-icon>
-                      <span>Editar</span>
-                    </button>
                     <button mat-menu-item (click)="verDetalles(cliente)">
                       <mat-icon>visibility</mat-icon>
                       <span>Ver detalles</span>
                     </button>
-                    <button mat-menu-item (click)="verReservas(cliente)">
-                      <mat-icon>event_note</mat-icon>
-                      <span>Ver reservas</span>
+                    <button mat-menu-item (click)="editarCliente(cliente)">
+                      <mat-icon>edit</mat-icon>
+                      <span>Editar</span>
                     </button>
                     <mat-divider></mat-divider>
                     <button mat-menu-item 
@@ -240,8 +236,7 @@ import { ClienteFormComponent } from '../../components/clientes/cliente-form/cli
 
               <tr mat-header-row *matHeaderRowDef="columnasVisibles"></tr>
               <tr mat-row *matRowDef="let row; columns: columnasVisibles;" 
-                  class="cliente-row"
-                  (click)="verDetalles(row)"></tr>
+              class="cliente-row"></tr>
             </table>
 
             <!-- Estado vacío -->
@@ -427,7 +422,6 @@ import { ClienteFormComponent } from '../../components/clientes/cliente-form/cli
     }
 
     .cliente-row {
-      cursor: pointer;
       transition: background-color 0.2s ease;
       border-bottom: 1px solid #f5f5f5;
     }
@@ -915,19 +909,49 @@ export class ClientesComponent implements OnInit {
   }
 
   verDetalles(cliente: Cliente): void {
-    // TODO: Implementar modal de detalles del cliente
-    console.log('Ver detalles de:', cliente);
-  }
+  const dialogRef = this.dialog.open(ClienteDetallesComponent, {
+    width: '700px',
+    maxWidth: '90vw',
+    maxHeight: '90vh',
+    data: cliente
+  });
 
-  verReservas(cliente: Cliente): void {
-    // TODO: Navegar a las reservas del cliente
-    console.log('Ver reservas de:', cliente);
-  }
+  dialogRef.afterClosed().subscribe(result => {
+    if (result?.action === 'edit') {
+      // Si el usuario quiere editar desde el modal de detalles
+      this.editarCliente(result.cliente);
+    }
+  });
+}
 
   toggleActivoCliente(cliente: Cliente): void {
-    // TODO: Implementar activar/desactivar cliente
-    console.log('Toggle activo:', cliente);
+  const nuevoEstado = !cliente.activo;
+  const accion = nuevoEstado ? 'activar' : 'desactivar';
+  
+  if (confirm(`¿${accion.charAt(0).toUpperCase() + accion.slice(1)} a ${cliente.nombre} ${cliente.apellido}?`)) {
+    
+    this.clienteService.toggleActivoCliente(cliente.id!, nuevoEstado).subscribe({
+      next: () => {
+        // Actualizar el estado local
+        cliente.activo = nuevoEstado;
+        this.aplicarFiltros(); // Reaplicar filtros
+        
+        this.snackBar.open(`Cliente ${accion}do exitosamente`, 'Cerrar', {
+          duration: 3000,
+          panelClass: ['success-snackbar']
+        });
+      },
+      error: (error) => {
+        console.error(`Error al ${accion} cliente:`, error);
+        
+        this.snackBar.open(`Error al ${accion} el cliente`, 'Cerrar', {
+          duration: 3000,
+          panelClass: ['error-snackbar']
+        });
+      }
+    });
   }
+}
 
   obtenerIniciales(nombre: string, apellido: string): string {
     return (nombre.charAt(0) + apellido.charAt(0)).toUpperCase();

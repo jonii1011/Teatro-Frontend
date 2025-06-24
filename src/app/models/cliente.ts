@@ -5,7 +5,7 @@ export interface Cliente {
   email: string;
   telefono?: string;
   dni: string;
-  fechaNacimiento: string; // ISO string format
+  fechaNacimiento: string;
   fechaRegistro?: string;
   eventosAsistidos?: number;
   pasesGratuitos?: number;

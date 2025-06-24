@@ -1,1 +1,248 @@
-<p>fidelizacion works!</p>
+<!-- src/app/components/fidelizacion/fidelizacion.component.html -->
+<div class="fidelizacion-container">
+  <!-- Header con navegación -->
+  <div class="header-section">
+    <h1 class="page-title">
+      🎭 Sistema de Fidelización
+    </h1>
+    
+    <nav class="tab-navigation">
+      <button 
+        class="tab-btn" 
+        [class.active]="activeView === 'dashboard'"
+        (click)="changeView('dashboard')">
+        📊 Dashboard
+      </button>
+      <button 
+        class="tab-btn" 
+        [class.active]="activeView === 'ranking'"
+        (click)="changeView('ranking')">
+        🏆 Ranking
+      </button>
+      <button 
+        class="tab-btn" 
+        [class.active]="activeView === 'reportes'"
+        (click)="changeView('reportes')">
+        📈 Reportes
+      </button>
+      <button 
+        class="tab-btn" 
+        [class.active]="activeView === 'cliente'"
+        (click)="changeView('cliente')">
+        👤 Cliente
+      </button>
+    </nav>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Cargando datos de fidelización...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error" class="error-state">
+    <p>{{ error }}</p>
+    <button (click)="cargarDatosPrincipales()" class="retry-btn">Reintentar</button>
+  </div>
+
+  <!-- Dashboard View -->
+  <div *ngIf="activeView === 'dashboard' && !loading && estadisticas" class="dashboard-view">
+    <!-- Estadísticas principales -->
+    <div class="stats-grid">
+      <div class="stat-card primary">
+        <div class="stat-value">{{ estadisticas.totalClientes }}</div>
+        <div class="stat-label">Total Clientes</div>
+      </div>
+      
+      <div class="stat-card success">
+        <div class="stat-value">{{ estadisticas.clientesFrecuentes }}</div>
+        <div class="stat-label">Clientes Frecuentes</div>
+      </div>
+      
+      <div class="stat-card warning">
+        <div class="stat-value">{{ estadisticas.clientesConPasesDisponibles }}</div>
+        <div class="stat-label">Con Pases Disponibles</div>
+      </div>
+      
+      <div class="stat-card info">
+        <div class="stat-value">{{ estadisticas.totalPasesOtorgados }}</div>
+        <div class="stat-label">Pases Otorgados</div>
+      </div>
+    </div>
+
+    <!-- Métricas adicionales -->
+    <div class="metrics-section">
+      <div class="metric-card">
+        <h3>Porcentaje de Fidelización</h3>
+        <div class="progress-bar">
+          <div class="progress-fill" [style.width.%]="estadisticas.porcentajeFidelizacion"></div>
+        </div>
+        <span class="progress-text">{{ estadisticas.porcentajeFidelizacion }}%</span>
+      </div>
+      
+      <div class="metric-card">
+        <h3>Promedio de Eventos por Cliente</h3>
+        <div class="metric-value">{{ estadisticas.promedioEventosPorCliente | number:'1.1-1' }}</div>
+      </div>
+    </div>
+
+    <!-- Clientes elegibles para pase -->
+    <div class="section" *ngIf="clientesElegibles.length > 0">
+      <h3>🎁 Clientes Elegibles para Pase Gratuito</h3>
+      <div class="clientes-elegibles">
+        <div *ngFor="let cliente of clientesElegibles" class="cliente-elegible">
+          <span class="cliente-nombre">{{ cliente.nombre }} {{ cliente.apellido }}</span>
+          <span class="cliente-eventos">{{ cliente.eventosAsistidos }} eventos</span>
+          <button class="btn-otorgar">Otorgar Pase</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Acciones administrativas -->
+    <div class="admin-actions">
+      <button (click)="actualizarSistema()" class="btn-admin primary">
+        🔄 Actualizar Sistema
+      </button>
+      <button (click)="validarIntegridad()" class="btn-admin secondary">
+        ✅ Validar Integridad
+      </button>
+      <button (click)="exportarDatos()" class="btn-admin info">
+        📁 Exportar Datos
+      </button>
+    </div>
+  </div>
+
+  <!-- Ranking View -->
+  <div *ngIf="activeView === 'ranking' && !loading" class="ranking-view">
+    <h2>🏆 Ranking de Clientes Frecuentes</h2>
+    
+    <div class="ranking-list">
+      <div *ngFor="let cliente of rankingClientes; let i = index" class="ranking-item">
+        <div class="ranking-position">
+          <span class="position-number">#{{ i + 1 }}</span>
+          <span class="position-icon">{{ getIconoNivel(getNivelCliente(cliente.eventosAsistidos)) }}</span>
+        </div>
+        
+        <div class="cliente-info">
+          <h4>{{ cliente.nombre }} {{ cliente.apellido }}</h4>
+          <p>{{ cliente.email }}</p>
+        </div>
+        
+        <div class="cliente-stats">
+          <div class="stat">
+            <span class="stat-number">{{ cliente.eventosAsistidos }}</span>
+            <span class="stat-text">Eventos</span>
+          </div>
+          <div class="stat">
+            <span class="stat-number">{{ cliente.pasesGratuitos }}</span>
+            <span class="stat-text">Pases</span>
+          </div>
+        </div>
+        
+        <div class="nivel-badge" [style.background-color]="getColorNivel(getNivelCliente(cliente.eventosAsistidos))">
+          {{ getNivelCliente(cliente.eventosAsistidos) }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reportes View -->
+  <div *ngIf="activeView === 'reportes' && !loading" class="reportes-view">
+    <h2>📈 Reportes Mensuales</h2>
+    
+    <div class="filtros-reporte">
+      <select [(ngModel)]="selectedYear" (change)="cargarReporteMensual()">
+        <option value="2024">2024</option>
+        <option value="2025">2025</option>
+      </select>
+      
+      <select [(ngModel)]="selectedMonth" (change)="cargarReporteMensual()">
+        <option value="1">Enero</option>
+        <option value="2">Febrero</option>
+        <option value="3">Marzo</option>
+        <option value="4">Abril</option>
+        <option value="5">Mayo</option>
+        <option value="6">Junio</option>
+        <option value="7">Julio</option>
+        <option value="8">Agosto</option>
+        <option value="9">Septiembre</option>
+        <option value="10">Octubre</option>
+        <option value="11">Noviembre</option>
+        <option value="12">Diciembre</option>
+      </select>
+      
+      <button (click)="cargarReporteMensual()" class="btn-filtrar">Filtrar</button>
+    </div>
+    
+    <div *ngIf="reporteMensual" class="reporte-content">
+      <h3>Reporte de {{ selectedMonth }}/{{ selectedYear }}</h3>
+      
+      <div class="reporte-stats">
+        <div class="reporte-stat">
+          <span>Total Clientes Frecuentes:</span>
+          <strong>{{ reporteMensual.totalClientesFrecuentes }}</strong>
+        </div>
+        
+        <div class="reporte-stat">
+          <span>Pases Otorgados:</span>
+          <strong>{{ reporteMensual.estadisticas.totalPasesOtorgados }}</strong>
+        </div>
+        
+        <div class="reporte-stat">
+          <span>Pases Utilizados:</span>
+          <strong>{{ reporteMensual.estadisticas.totalPasesUsados }}</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cliente View -->
+  <div *ngIf="activeView === 'cliente' && !loading" class="cliente-view">
+    <h2>👤 Detalles de Cliente</h2>
+    
+    <div class="selector-cliente">
+      <select [(ngModel)]="selectedClienteId" (change)="cargarEstadisticasCliente(selectedClienteId!)">
+        <option value="">Seleccionar cliente...</option>
+        <option *ngFor="let cliente of rankingClientes" [value]="cliente.id">
+          {{ cliente.nombre }} {{ cliente.apellido }}
+        </option>
+      </select>
+    </div>
+    
+    <div *ngIf="estadisticasCliente" class="cliente-details">
+      <div class="progreso-fidelizacion">
+        <h3>Progreso hacia próximo pase gratuito</h3>
+        <div class="progress-circle">
+          <div class="progress-text">
+            {{ estadisticasCliente.eventosParaProximoPase }} eventos restantes
+          </div>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" 
+               [style.width.%]="getProgresoPorcentaje(estadisticasCliente.eventosAsistidos)">
+          </div>
+        </div>
+      </div>
+      
+      <div class="cliente-stats-detail">
+        <div class="stat-detail">
+          <span>Eventos Asistidos:</span>
+          <strong>{{ estadisticasCliente.eventosAsistidos }}</strong>
+        </div>
+        <div class="stat-detail">
+          <span>Pases Disponibles:</span>
+          <strong>{{ estadisticasCliente.pasesGratuitosDisponibles }}</strong>
+        </div>
+        <div class="stat-detail">
+          <span>Asistencias este año:</span>
+          <strong>{{ estadisticasCliente.asistenciasEsteAno }}</strong>
+        </div>
+        <div class="stat-detail">
+          <span>Meses como cliente:</span>
+          <strong>{{ estadisticasCliente.mesesComoCliente }}</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

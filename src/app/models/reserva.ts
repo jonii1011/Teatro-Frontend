@@ -1,4 +1,3 @@
-// src/app/models/reserva.ts
 import { Cliente, ClienteResumen } from './cliente';
 import { Evento, EventoResumen, TipoEntrada } from './evento';
 
@@ -38,7 +37,6 @@ export interface ReservaResumen {
 }
 
 export enum EstadoReserva {
-  PENDIENTE = 'PENDIENTE',
   CONFIRMADA = 'CONFIRMADA',
   CANCELADA = 'CANCELADA',
 }
